@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.8</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.movein</groupId>
 	<artifactId>shuttlesync</artifactId>
@@ -100,8 +100,8 @@
 		</dependency>
 		<dependency>
 			<groupId>me.paulschwarz</groupId>
-			<artifactId>springboot-dotenv</artifactId>
-			<version>4.0.0</version>
+			<artifactId>springboot4-dotenv</artifactId>
+			<version>5.1.0</version>
 		</dependency>
 	</dependencies>
 
