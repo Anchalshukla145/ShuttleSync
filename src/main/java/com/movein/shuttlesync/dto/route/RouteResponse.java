@@ -1,5 +1,6 @@
 package com.movein.shuttlesync.dto.route;
 
+import java.time.LocalTime;
 import java.util.List;
 
 public class RouteResponse {
@@ -17,6 +18,7 @@ public class RouteResponse {
         private String name;
         private String location;
         private Integer sequenceOrder;
+        private LocalTime arrivalTime;
 
         public StopDto() {
         }
@@ -26,6 +28,14 @@ public class RouteResponse {
             this.name = name;
             this.location = location;
             this.sequenceOrder = sequenceOrder;
+        }
+
+        public StopDto(Long id, String name, String location, Integer sequenceOrder, LocalTime arrivalTime) {
+            this.id = id;
+            this.name = name;
+            this.location = location;
+            this.sequenceOrder = sequenceOrder;
+            this.arrivalTime = arrivalTime;
         }
 
         public Long getId() {
@@ -58,6 +68,14 @@ public class RouteResponse {
 
         public void setSequenceOrder(Integer sequenceOrder) {
             this.sequenceOrder = sequenceOrder;
+        }
+
+        public LocalTime getArrivalTime() {
+            return arrivalTime;
+        }
+
+        public void setArrivalTime(LocalTime arrivalTime) {
+            this.arrivalTime = arrivalTime;
         }
     }
 

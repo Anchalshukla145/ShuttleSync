@@ -46,7 +46,8 @@ public class RouteService {
                         stop.getId(),
                         stop.getName(),
                         stop.getLocation(),
-                        stop.getSequenceOrder()
+                        stop.getSequenceOrder(),
+                        stop.getArrivalTime()
                 ))
                 .collect(Collectors.toList());
 
