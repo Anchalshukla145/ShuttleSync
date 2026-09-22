@@ -1,6 +1,7 @@
 package com.movein.shuttlesync.service;
 
 import com.movein.shuttlesync.common.enums.BookingStatus;
+import com.movein.shuttlesync.common.enums.TripStatus;
 import com.movein.shuttlesync.dto.booking.BookingRequest;
 import com.movein.shuttlesync.dto.booking.BookingResponse;
 import com.movein.shuttlesync.entity.*;
@@ -10,6 +11,7 @@ import com.movein.shuttlesync.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -37,26 +39,43 @@ public class BookingService {
 
     @Transactional
     public BookingResponse createBooking(Long userId, BookingRequest request) {
+        // 1. Validate User
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", userId));
 
+        // 2. Validate Trip
         Trip trip = tripRepository.findById(request.getTripId())
                 .orElseThrow(() -> new ResourceNotFoundException("Trip", "id", request.getTripId()));
 
-        if (trip.getAvailableSeats() != null && trip.getAvailableSeats() <= 0) {
-            throw new BookingException("No available seats on this trip");
+        if (trip.getStatus() != TripStatus.SCHEDULED) {
+            throw new BookingException("Trip is not in a bookable status: " + trip.getStatus());
         }
 
-        Seat seat = seatAllocationService.allocateSeat(trip, request.getSeatId());
+        // 3. Validate Pickup and Dropoff Stops
+        Stop pickupStop = stopRepository.findById(request.getPickupStopId())
+                .orElseThrow(() -> new ResourceNotFoundException("Stop", "id", request.getPickupStopId()));
 
-        Stop pickupStop = request.getPickupStopId() != null
-                ? stopRepository.findById(request.getPickupStopId()).orElse(null)
-                : null;
+        Stop dropoffStop = stopRepository.findById(request.getDropoffStopId())
+                .orElseThrow(() -> new ResourceNotFoundException("Stop", "id", request.getDropoffStopId()));
 
-        Stop dropoffStop = request.getDropoffStopId() != null
-                ? stopRepository.findById(request.getDropoffStopId()).orElse(null)
-                : null;
+        // 4. Validate stops belong to the trip route
+        Long routeId = trip.getRoute().getId();
+        if (!pickupStop.getRoute().getId().equals(routeId)) {
+            throw new BookingException("Pickup stop does not belong to the trip route");
+        }
+        if (!dropoffStop.getRoute().getId().equals(routeId)) {
+            throw new BookingException("Dropoff stop does not belong to the trip route");
+        }
 
+        // 5. Validate stop sequence order
+        if (pickupStop.getSequenceOrder() >= dropoffStop.getSequenceOrder()) {
+            throw new BookingException("Pickup stop must come before dropoff stop in the route sequence");
+        }
+
+        // 6. Allocate seat using segment-based overlap check & pessimistic lock
+        Seat seat = seatAllocationService.allocateSeat(trip, pickupStop, dropoffStop, request.getSeatId());
+
+        // 7. Create and persist booking
         Booking booking = new Booking();
         booking.setBookingReference("BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
         booking.setUser(user);
@@ -65,11 +84,7 @@ public class BookingService {
         booking.setPickupStop(pickupStop);
         booking.setDropoffStop(dropoffStop);
         booking.setStatus(BookingStatus.CONFIRMED);
-
-        if (trip.getAvailableSeats() != null) {
-            trip.setAvailableSeats(trip.getAvailableSeats() - 1);
-            tripRepository.save(trip);
-        }
+        booking.setBookingTime(LocalDateTime.now());
 
         Booking savedBooking = bookingRepository.save(booking);
         return mapToBookingResponse(savedBooking);
@@ -94,15 +109,11 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", "id", bookingId));
 
-        booking.setStatus(BookingStatus.CANCELLED);
-        seatAllocationService.releaseSeat(booking.getSeat());
-
-        Trip trip = booking.getTrip();
-        if (trip.getAvailableSeats() != null) {
-            trip.setAvailableSeats(trip.getAvailableSeats() + 1);
-            tripRepository.save(trip);
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new BookingException("Booking is already cancelled");
         }
 
+        booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
     }
 

@@ -1,12 +1,15 @@
 package com.movein.shuttlesync.service;
 
+import com.movein.shuttlesync.dto.route.RouteRequest;
 import com.movein.shuttlesync.dto.route.RouteResponse;
 import com.movein.shuttlesync.entity.Route;
+import com.movein.shuttlesync.entity.Stop;
 import com.movein.shuttlesync.exception.ResourceNotFoundException;
 import com.movein.shuttlesync.repository.RouteRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,6 +20,38 @@ public class RouteService {
 
     public RouteService(RouteRepository routeRepository) {
         this.routeRepository = routeRepository;
+    }
+
+    @Transactional
+    public RouteResponse createRoute(RouteRequest request) {
+        if (request.getStops() == null || request.getStops().isEmpty()) {
+            throw new IllegalArgumentException("A route must have at least one stop");
+        }
+
+        Route route = new Route();
+        route.setName(request.getName());
+        route.setOrigin(request.getOrigin());
+        route.setDestination(request.getDestination());
+        route.setDistanceKm(request.getDistanceKm());
+        route.setEstimatedDurationMinutes(request.getEstimatedDurationMinutes());
+
+        List<Stop> stops = request.getStops().stream()
+                .map(stopReq -> {
+                    Stop stop = new Stop();
+                    stop.setName(stopReq.getName());
+                    stop.setLocation(stopReq.getLocation());
+                    stop.setSequenceOrder(stopReq.getSequenceOrder());
+                    stop.setArrivalTime(stopReq.getArrivalTime());
+                    stop.setRoute(route);
+                    return stop;
+                })
+                .sorted(Comparator.comparingInt(Stop::getSequenceOrder))
+                .collect(Collectors.toList());
+
+        route.setStops(stops);
+
+        Route savedRoute = routeRepository.save(route);
+        return mapToRouteResponse(savedRoute);
     }
 
     @Transactional(readOnly = true)

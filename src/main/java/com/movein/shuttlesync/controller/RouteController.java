@@ -1,7 +1,10 @@
 package com.movein.shuttlesync.controller;
 
+import com.movein.shuttlesync.dto.route.RouteRequest;
 import com.movein.shuttlesync.dto.route.RouteResponse;
 import com.movein.shuttlesync.service.RouteService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,6 +18,12 @@ public class RouteController {
 
     public RouteController(RouteService routeService) {
         this.routeService = routeService;
+    }
+
+    @PostMapping
+    public ResponseEntity<RouteResponse> createRoute(@Valid @RequestBody RouteRequest request) {
+        RouteResponse createdRoute = routeService.createRoute(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdRoute);
     }
 
     @GetMapping

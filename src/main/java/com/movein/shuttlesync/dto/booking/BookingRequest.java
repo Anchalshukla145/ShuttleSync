@@ -7,20 +7,22 @@ public class BookingRequest {
     @NotNull(message = "Trip ID is required")
     private Long tripId;
 
-    private Long seatId;
-
+    @NotNull(message = "Pickup stop ID is required")
     private Long pickupStopId;
 
+    @NotNull(message = "Dropoff stop ID is required")
     private Long dropoffStopId;
+
+    private Long seatId;
 
     public BookingRequest() {
     }
 
-    public BookingRequest(Long tripId, Long seatId, Long pickupStopId, Long dropoffStopId) {
+    public BookingRequest(Long tripId, Long pickupStopId, Long dropoffStopId, Long seatId) {
         this.tripId = tripId;
-        this.seatId = seatId;
         this.pickupStopId = pickupStopId;
         this.dropoffStopId = dropoffStopId;
+        this.seatId = seatId;
     }
 
     public Long getTripId() {
@@ -29,14 +31,6 @@ public class BookingRequest {
 
     public void setTripId(Long tripId) {
         this.tripId = tripId;
-    }
-
-    public Long getSeatId() {
-        return seatId;
-    }
-
-    public void setSeatId(Long seatId) {
-        this.seatId = seatId;
     }
 
     public Long getPickupStopId() {
@@ -53,5 +47,13 @@ public class BookingRequest {
 
     public void setDropoffStopId(Long dropoffStopId) {
         this.dropoffStopId = dropoffStopId;
+    }
+
+    public Long getSeatId() {
+        return seatId;
+    }
+
+    public void setSeatId(Long seatId) {
+        this.seatId = seatId;
     }
 }
