@@ -1,0 +1,37 @@
+package com.movein.shuttlesync.controller;
+
+import com.movein.shuttlesync.dto.route.RouteResponse;
+import com.movein.shuttlesync.service.RouteService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/routes")
+public class RouteController {
+
+    private final RouteService routeService;
+
+    public RouteController(RouteService routeService) {
+        this.routeService = routeService;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<RouteResponse>> getAllRoutes() {
+        return ResponseEntity.ok(routeService.getAllRoutes());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<RouteResponse> getRouteById(@PathVariable Long id) {
+        return ResponseEntity.ok(routeService.getRouteById(id));
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<RouteResponse>> searchRoutes(
+            @RequestParam String origin,
+            @RequestParam String destination
+    ) {
+        return ResponseEntity.ok(routeService.searchRoutes(origin, destination));
+    }
+}
