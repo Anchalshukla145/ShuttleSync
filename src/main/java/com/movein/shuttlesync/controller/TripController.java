@@ -1,8 +1,11 @@
 package com.movein.shuttlesync.controller;
 
+import com.movein.shuttlesync.dto.trip.TripRequest;
 import com.movein.shuttlesync.dto.trip.TripResponse;
 import com.movein.shuttlesync.service.TripService;
+import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +20,12 @@ public class TripController {
 
     public TripController(TripService tripService) {
         this.tripService = tripService;
+    }
+
+    @PostMapping
+    public ResponseEntity<TripResponse> createTrip(@Valid @RequestBody TripRequest request) {
+        TripResponse createdTrip = tripService.createTrip(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTrip);
     }
 
     @GetMapping
