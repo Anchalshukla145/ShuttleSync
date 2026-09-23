@@ -24,17 +24,20 @@ public class BookingService {
     private final UserRepository userRepository;
     private final StopRepository stopRepository;
     private final SeatAllocationService seatAllocationService;
+    private final WaitlistService waitlistService;
 
     public BookingService(BookingRepository bookingRepository,
                           TripRepository tripRepository,
                           UserRepository userRepository,
                           StopRepository stopRepository,
-                          SeatAllocationService seatAllocationService) {
+                          SeatAllocationService seatAllocationService,
+                          WaitlistService waitlistService) {
         this.bookingRepository = bookingRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
         this.stopRepository = stopRepository;
         this.seatAllocationService = seatAllocationService;
+        this.waitlistService = waitlistService;
     }
 
     @Transactional
@@ -115,6 +118,10 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+
+        if (booking.getSeat() != null && booking.getTrip() != null) {
+            waitlistService.promoteWaitlistedPassenger(booking.getTrip(), booking.getSeat());
+        }
     }
 
     private BookingResponse mapToBookingResponse(Booking booking) {

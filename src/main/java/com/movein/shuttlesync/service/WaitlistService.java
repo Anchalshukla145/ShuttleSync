@@ -1,19 +1,16 @@
 package com.movein.shuttlesync.service;
 
+import com.movein.shuttlesync.common.enums.BookingStatus;
 import com.movein.shuttlesync.common.enums.WaitlistStatus;
-import com.movein.shuttlesync.entity.Stop;
-import com.movein.shuttlesync.entity.Trip;
-import com.movein.shuttlesync.entity.User;
-import com.movein.shuttlesync.entity.WaitlistEntry;
+import com.movein.shuttlesync.entity.*;
 import com.movein.shuttlesync.exception.ResourceNotFoundException;
-import com.movein.shuttlesync.repository.StopRepository;
-import com.movein.shuttlesync.repository.TripRepository;
-import com.movein.shuttlesync.repository.UserRepository;
-import com.movein.shuttlesync.repository.WaitlistRepository;
+import com.movein.shuttlesync.repository.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class WaitlistService {
@@ -22,12 +19,21 @@ public class WaitlistService {
     private final TripRepository tripRepository;
     private final UserRepository userRepository;
     private final StopRepository stopRepository;
+    private final BookingRepository bookingRepository;
+    private final SeatAllocationService seatAllocationService;
 
-    public WaitlistService(WaitlistRepository waitlistRepository, TripRepository tripRepository, UserRepository userRepository, StopRepository stopRepository) {
+    public WaitlistService(WaitlistRepository waitlistRepository,
+                           TripRepository tripRepository,
+                           UserRepository userRepository,
+                           StopRepository stopRepository,
+                           BookingRepository bookingRepository,
+                           SeatAllocationService seatAllocationService) {
         this.waitlistRepository = waitlistRepository;
         this.tripRepository = tripRepository;
         this.userRepository = userRepository;
         this.stopRepository = stopRepository;
+        this.bookingRepository = bookingRepository;
+        this.seatAllocationService = seatAllocationService;
     }
 
     @Transactional
@@ -61,5 +67,45 @@ public class WaitlistService {
     @Transactional(readOnly = true)
     public List<WaitlistEntry> getUserWaitlist(Long userId) {
         return waitlistRepository.findByUserId(userId);
+    }
+
+    @Transactional
+    public void promoteWaitlistedPassenger(Trip trip, Seat seat) {
+        if (trip == null || seat == null) {
+            return;
+        }
+
+        List<WaitlistEntry> pendingEntries = waitlistRepository
+                .findByTripIdAndStatusOrderByPriorityOrderAsc(trip.getId(), WaitlistStatus.PENDING);
+
+        for (WaitlistEntry candidate : pendingEntries) {
+            Stop pickupStop = candidate.getPickupStop();
+            Stop dropoffStop = candidate.getDropoffStop();
+
+            if (pickupStop == null || dropoffStop == null) {
+                continue;
+            }
+
+            int startSequence = pickupStop.getSequenceOrder();
+            int endSequence = dropoffStop.getSequenceOrder();
+
+            if (seatAllocationService.isSeatAvailableForSegment(seat, startSequence, endSequence)) {
+                Booking booking = new Booking();
+                booking.setBookingReference("BK-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase());
+                booking.setUser(candidate.getUser());
+                booking.setTrip(trip);
+                booking.setSeat(seat);
+                booking.setPickupStop(pickupStop);
+                booking.setDropoffStop(dropoffStop);
+                booking.setStatus(BookingStatus.CONFIRMED);
+                booking.setBookingTime(LocalDateTime.now());
+                bookingRepository.save(booking);
+
+                candidate.setStatus(WaitlistStatus.ALLOCATED);
+                waitlistRepository.save(candidate);
+
+                break;
+            }
+        }
     }
 }
